@@ -1,0 +1,92 @@
+# Practical Machine Learning Course Project
+#### By Sheila Yio
+#### 17 March 2015
+
+## Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, we will use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants to predict the manner in which they did the exercise.  
+
+The data and more information of the data is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).  
+  
+## Data Loading and PreProcessing
+
+Firstly, we will load the training and testing data from the csv files into the data frames. Thereafter, we will remove the irrelevant columns/variables from the data frames.  
+
+```{r DataPreProcess, echo=TRUE}
+
+## Assuming data files have been downloaded to the working directory
+## Load data files
+trainDataFile <- read.csv("pml-training.csv")
+testDataFile <- read.csv("pml-testing.csv")
+
+## To remove irrelevant variables
+trainData <- trainDataFile[, colSums(is.na(trainDataFile))==0]
+classe <- trainData$classe
+trainToRemove <- grepl("^X|timestamp|window", names(trainData))
+trainData <- trainData[, !trainToRemove]
+trainData <- trainData[, sapply(trainData, is.numeric)]
+trainData$classe <- classe
+
+testData <- testDataFile[, colSums(is.na(testDataFile))==0]
+testToRemove <- grepl("^X|timestamp|window", names(testData))
+testData <- testData[, !testToRemove]
+testData <- testData[, sapply(testData, is.numeric)]
+testData <- testData[, -length(names(testData))]
+
+```
+
+## Data Partitioning to enable Predictive Modelling
+
+To facilitate predictive modelling, we will further split the training dataset into training set (70%) and testing set (30%).  
+
+```{r DataPartition, echo=TRUE}
+
+library(caret)
+
+## Set seed for reproducibility
+set.seed(12345)
+
+## Split the trainData into training and testing sets
+inTrain <- createDataPartition(trainData$classe, p=0.7, list=FALSE)
+training <- trainData[inTrain, ]
+testing <- trainData[-inTrain, ]
+
+```
+
+## Predictive Modelling
+
+We randomly selected two predictive models for comparison: (1) classification tree, and (2) random forest algorithm.
+
+### Predictive Model 1: Classification Tree
+
+```{r ClassTree, echo=TRUE}
+
+## Train the model using classification tree algorithm
+modelCT <- rpart(classe~., data=training, method="class")
+
+## Plot classification tree
+library(rpart.plot)
+prp(modelCT)
+
+## Predict and check accuracy of model using testing set
+predictCT <- predict(modelCT, newdata=testing, type="class")
+confusionMatrix(predictCT,testing$classe)
+
+```
+
+### Predictive Model 2: Random Forest
+
+```{r RandomForest, echo=TRUE}
+
+## Train the model using random forest algorithm
+modelRF <- randomForest(classe~., data=training)
+
+## Predict and check accuracy of model using testing set
+predictRF <- predict(modelRF, newdata=testing)
+confusionMatrix(predictRF,testing$classe)
+
+```
+
+## Conclusion
+
+The estimated accuracy of the classification tree model is 72.2%, while the estimated accuracy of the random forest model is 99.18%. As such, the random forest model is chosen as our predictive model, and the expected out-of-sample error of the chosen predictive model is 0.82%.
